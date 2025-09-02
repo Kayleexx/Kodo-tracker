@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::io::{Write, Read};
 use std::path::Path;
-use anyhow::Result;
+use anyhow::{Result, Context};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Activity {
@@ -25,14 +25,28 @@ impl Activity {
     pub fn duration_minutes(&self) -> u32 { self.duration_minutes }
 
     pub fn save_all_to_file(activities: &[Activity], path: &Path) -> Result<()> {
-        let json = serde_json::to_string_pretty(activities)?;  // pretty JSON
+        let json = serde_json::to_string_pretty(activities)?; 
         std::fs::write(path, json)?;
         Ok(())
     }
 
     pub fn load_from_file(path: &Path) -> Result<Vec<Activity>> {
-        let contents = std::fs::read_to_string(path)?;
-        let acts: Vec<Activity> = serde_json::from_str(&contents)?;
-        Ok(acts)
+    if !path.exists() {
+        return Ok(Vec::new());
     }
+
+    let mut file = File::open(path)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+
+    if contents.trim().is_empty() {
+        return Ok(Vec::new()); 
+    }
+
+    let acts: Vec<Activity> = serde_json::from_str(&contents)
+        .with_context(|| format!("Failed to parse JSON in {:?}", path))?;
+
+    Ok(acts)
+}
+
 }
