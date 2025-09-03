@@ -11,4 +11,8 @@ repository = "https://github.com/your-username/kodo"
 [dependencies]
 clap = { version = "4.3", features = ["derive"] }  
 anyhow = "1.0"                                     
-kodo-core = { path = "../kodo-core" }               
+kodo-core = { path = "../kodo-core" }
+ratatui = "0.26"
+crossterm = "0.27"
+chrono = "0.4"
+uuid = "1.18.1"

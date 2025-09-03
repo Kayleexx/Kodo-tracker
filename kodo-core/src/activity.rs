@@ -1,22 +1,27 @@
 use serde::{Serialize, Deserialize};
 use std::fs::File;
-use std::io::{Write, Read};
+use std::io::Read;
 use std::path::Path;
 use anyhow::{Result, Context};
+use chrono::Local;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Activity {
     pub id: u32,
     pub name: String,
     pub duration_minutes: u32,
+    pub date: String,
 }
 
 impl Activity {
     pub fn new_with_id(id: u32, name: &str, duration_minutes: u32) -> Self {
+        let today = Local::now().format("%Y-%m-%d").to_string();
+
         Self {
             id,
             name: name.to_string(),
             duration_minutes,
+            date: today,
         }
     }
 

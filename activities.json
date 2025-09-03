@@ -1,7 +1,14 @@
 [
   {
-    "id": 2,
-    "name": "New Reading",
-    "duration_minutes": 30
+    "id": 1,
+    "name": "studying",
+    "duration_minutes": 23,
+    "date": "2025-09-03"
+  },
+  {
+    "id": 3,
+    "name": "gyming",
+    "duration_minutes": 40,
+    "date": "2025-09-03"
   }
 ]
