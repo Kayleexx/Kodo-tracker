@@ -42,15 +42,43 @@ fn run_app<B: ratatui::backend::Backend>(
         Normal,
         AddingName,
         AddingDuration { name: String },
-        EditingName { activity_id: u32 },
-        EditingDuration { activity_id: u32 },
+        FilteringMin,
+        FilteringMax { min: u32 },
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    enum SortMode {
+        ByDate,
+        ByDuration,
+        ByName,
     }
 
     let mut input_stage = InputStage::Normal;
     let mut input_buffer = String::new();
     let mut selected = 0usize;
 
+    // Filtering & sorting state
+    let mut filter_min: Option<u32> = None;
+    let mut filter_max: Option<u32> = None;
+    let mut sort_mode = SortMode::ByDate;
+
     loop {
+        // prepare list based on filters + sorting
+        let mut view: Vec<Activity> = activities
+            .iter()
+            .filter(|a| {
+                (filter_min.map_or(true, |m| a.duration_minutes >= m))
+                    && (filter_max.map_or(true, |m| a.duration_minutes <= m))
+            })
+            .cloned()
+            .collect();
+
+        match sort_mode {
+            SortMode::ByDate => view.sort_by(|a, b| b.date.cmp(&a.date)),
+            SortMode::ByDuration => view.sort_by(|a, b| b.duration_minutes.cmp(&a.duration_minutes)),
+            SortMode::ByName => view.sort_by(|a, b| a.name.cmp(&b.name)),
+        }
+
         terminal.draw(|f| {
             let size = f.size();
             let chunks = Layout::default()
@@ -60,36 +88,34 @@ fn run_app<B: ratatui::backend::Backend>(
                 .split(size);
 
             // Header
-            let header_text = " Kodo Dashboard - 'q' quit | 'a' add | 'd' delete | 'e' edit ";
-            f.render_widget(input::header_block(header_text), chunks[0]);
+            let header_text = format!(
+                " Kodo Dashboard - 'q' quit | 'a' add | 'd' delete | 'f' filter | 's' sort({:?}) | 'r' reset ",
+                sort_mode
+            );
+            f.render_widget(input::header_block(&header_text), chunks[0]);
 
             // Table
-            ActivityTable::draw(f, chunks[1], activities, selected);
+            ActivityTable::draw(f, chunks[1], &view, selected);
 
             // Bottom input / stats
             let bottom_text = match &input_stage {
-                InputStage::Normal => format!(
-                    "Total activities: {} | Total time: {} min",
-                    activities.len(),
-                    activities.iter().map(|a| a.duration_minutes).sum::<u32>()
-                ),
+                InputStage::Normal => {
+                    let total: u32 = view.iter().map(|a| a.duration_minutes).sum();
+                    format!(
+                        "Total shown: {} | Total time: {} min | Filter(min={:?}, max={:?})",
+                        view.len(),
+                        total,
+                        filter_min,
+                        filter_max
+                    )
+                }
                 InputStage::AddingName => format!("Enter activity name: {}", input_buffer),
                 InputStage::AddingDuration { name } => {
                     format!("Enter duration (minutes) for '{}': {}", name, input_buffer)
                 }
-                InputStage::EditingName { activity_id } => {
-                    let act = activities.iter().find(|a| a.id == *activity_id);
-                    match act {
-                        Some(a) => format!("Editing name for '{}', leave empty to keep: {}", a.name, input_buffer),
-                        None => "Activity not found.".to_string(),
-                    }
-                }
-                InputStage::EditingDuration { activity_id } => {
-                    let act = activities.iter().find(|a| a.id == *activity_id);
-                    match act {
-                        Some(a) => format!("Editing duration for '{}', leave empty to keep: {}", a.name, input_buffer),
-                        None => "Activity not found.".to_string(),
-                    }
+                InputStage::FilteringMin => format!("Enter min duration filter: {}", input_buffer),
+                InputStage::FilteringMax { min } => {
+                    format!("Enter max duration filter (min={}): {}", min, input_buffer)
                 }
             };
             f.render_widget(Paragraph::new(bottom_text), chunks[2]);
@@ -114,11 +140,22 @@ fn run_app<B: ratatui::backend::Backend>(
                                 Activity::save_all_to_file(activities, path).ok();
                             }
                         }
-                        KeyCode::Char('e') => {
-                            if let Some(act) = activities.get(selected) {
-                                input_stage = InputStage::EditingName { activity_id: act.id };
-                                input_buffer.clear();
-                            }
+                        KeyCode::Char('f') => {
+                            input_stage = InputStage::FilteringMin;
+                            input_buffer.clear();
+                        }
+                        KeyCode::Char('s') => {
+                            sort_mode = match sort_mode {
+                                SortMode::ByDate => SortMode::ByDuration,
+                                SortMode::ByDuration => SortMode::ByName,
+                                SortMode::ByName => SortMode::ByDate,
+                            };
+                        }
+                        KeyCode::Char('r') => {
+                            // ✅ Reset filters
+                            filter_min = None;
+                            filter_max = None;
+                            input_stage = InputStage::Normal;
                         }
                         KeyCode::Up => {
                             if selected > 0 {
@@ -140,9 +177,16 @@ fn run_app<B: ratatui::backend::Backend>(
                                 input_stage = InputStage::AddingDuration { name };
                             }
                         }
-                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; }
-                        KeyCode::Backspace => { input_buffer.pop(); }
-                        KeyCode::Char(c) => { input_buffer.push(c); }
+                        KeyCode::Esc => {
+                            input_buffer.clear();
+                            input_stage = InputStage::Normal;
+                        }
+                        KeyCode::Backspace => {
+                            input_buffer.pop();
+                        }
+                        KeyCode::Char(c) => {
+                            input_buffer.push(c);
+                        }
                         _ => {}
                     },
                     InputStage::AddingDuration { name } => match key.code {
@@ -157,54 +201,58 @@ fn run_app<B: ratatui::backend::Backend>(
                                     date: Local::now().format("%Y-%m-%d").to_string(),
                                 });
                                 Activity::save_all_to_file(activities, path).ok();
-                                input_stage = InputStage::Normal;
                             }
-                            input_buffer.clear();
-                        }
-                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; }
-                        KeyCode::Backspace => { input_buffer.pop(); }
-                        KeyCode::Char(c) => { input_buffer.push(c); }
-                        _ => {}
-                    },
-                    InputStage::EditingName { activity_id } => match key.code {
-                        KeyCode::Enter => {
-                            let new_name = if input_buffer.trim().is_empty() {
-                                None
-                            } else {
-                                Some(input_buffer.trim().to_string())
-                            };
-                            if let Some(act) = activities.iter_mut().find(|a| a.id == *activity_id) {
-                                if let Some(name) = new_name {
-                                    act.name = name;
-                                }
-                            }
-                            input_buffer.clear();
-                            input_stage = InputStage::EditingDuration { activity_id: *activity_id };
-                        }
-                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; }
-                        KeyCode::Backspace => { input_buffer.pop(); }
-                        KeyCode::Char(c) => { input_buffer.push(c); }
-                        _ => {}
-                    },
-                    InputStage::EditingDuration { activity_id } => match key.code {
-                        KeyCode::Enter => {
-                            let new_duration = if input_buffer.trim().is_empty() {
-                                None
-                            } else {
-                                input_buffer.trim().parse::<u32>().ok()
-                            };
-                            if let Some(act) = activities.iter_mut().find(|a| a.id == *activity_id) {
-                                if let Some(duration) = new_duration {
-                                    act.duration_minutes = duration;
-                                }
-                            }
-                            Activity::save_all_to_file(activities, path).ok();
                             input_buffer.clear();
                             input_stage = InputStage::Normal;
                         }
-                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; }
-                        KeyCode::Backspace => { input_buffer.pop(); }
-                        KeyCode::Char(c) => { input_buffer.push(c); }
+                        KeyCode::Esc => {
+                            input_buffer.clear();
+                            input_stage = InputStage::Normal;
+                        }
+                        KeyCode::Backspace => {
+                            input_buffer.pop();
+                        }
+                        KeyCode::Char(c) => {
+                            input_buffer.push(c);
+                        }
+                        _ => {}
+                    },
+                    InputStage::FilteringMin => match key.code {
+                        KeyCode::Enter => {
+                            let min = input_buffer.trim().parse().unwrap_or(0);
+                            filter_min = if min > 0 { Some(min) } else { None };
+                            input_buffer.clear();
+                            input_stage = InputStage::FilteringMax { min };
+                        }
+                        KeyCode::Esc => {
+                            input_buffer.clear();
+                            input_stage = InputStage::Normal;
+                        }
+                        KeyCode::Backspace => {
+                            input_buffer.pop();
+                        }
+                        KeyCode::Char(c) => {
+                            input_buffer.push(c);
+                        }
+                        _ => {}
+                    },
+                    InputStage::FilteringMax { min: _ } => match key.code {
+                        KeyCode::Enter => {
+                            let max = input_buffer.trim().parse().unwrap_or(0);
+                            filter_max = if max > 0 { Some(max) } else { None };
+                            input_buffer.clear();
+                            input_stage = InputStage::Normal;
+                        }
+                        KeyCode::Esc => {
+                            input_buffer.clear();
+                            input_stage = InputStage::Normal;
+                        }
+                        KeyCode::Backspace => {
+                            input_buffer.pop();
+                        }
+                        KeyCode::Char(c) => {
+                            input_buffer.push(c);
+                        }
                         _ => {}
                     },
                 }

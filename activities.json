@@ -1,14 +1,26 @@
 [
   {
     "id": 1,
-    "name": "studying",
-    "duration_minutes": 23,
+    "name": "reading",
+    "duration_minutes": 10,
+    "date": "2025-09-03"
+  },
+  {
+    "id": 2,
+    "name": "writing",
+    "duration_minutes": 20,
     "date": "2025-09-03"
   },
   {
     "id": 3,
+    "name": "singing",
+    "duration_minutes": 30,
+    "date": "2025-09-03"
+  },
+  {
+    "id": 4,
     "name": "gyming",
-    "duration_minutes": 40,
+    "duration_minutes": 34,
     "date": "2025-09-03"
   }
 ]
