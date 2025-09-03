@@ -12,8 +12,7 @@ use ratatui::{
     widgets::Paragraph,
     Terminal,
 };
-use crate::tui::table::ActivityTable;
-use crate::tui::input;
+use crate::tui::{input, widgets};
 use kodo_core::Activity;
 
 pub fn run(activities: &mut Vec<Activity>, path: &Path) -> io::Result<()> {
@@ -57,13 +56,12 @@ fn run_app<B: ratatui::backend::Backend>(
     let mut input_buffer = String::new();
     let mut selected = 0usize;
 
-    // Filtering & sorting state
     let mut filter_min: Option<u32> = None;
     let mut filter_max: Option<u32> = None;
     let mut sort_mode = SortMode::ByDate;
+    let mut show_stats = false; // <-- new toggle for graphical stats
 
     loop {
-        // prepare list based on filters + sorting
         let mut view: Vec<Activity> = activities
             .iter()
             .filter(|a| {
@@ -89,13 +87,13 @@ fn run_app<B: ratatui::backend::Backend>(
 
             // Header
             let header_text = format!(
-                " Kodo Dashboard - 'q' quit | 'a' add | 'd' delete | 'f' filter | 's' sort({:?}) | 'r' reset ",
+                " Kodo Dashboard - 'q' quit | 'a' add | 'd' delete | 'f' filter | 'r' reset filters | 's' sort({:?}) | 'v' toggle stats ",
                 sort_mode
             );
             f.render_widget(input::header_block(&header_text), chunks[0]);
 
-            // Table
-            ActivityTable::draw(f, chunks[1], &view, selected);
+            // Main dashboard: table + optional stats
+            widgets::draw_dashboard(f, chunks[1], &view, selected, show_stats);
 
             // Bottom input / stats
             let bottom_text = match &input_stage {
@@ -114,9 +112,7 @@ fn run_app<B: ratatui::backend::Backend>(
                     format!("Enter duration (minutes) for '{}': {}", name, input_buffer)
                 }
                 InputStage::FilteringMin => format!("Enter min duration filter: {}", input_buffer),
-                InputStage::FilteringMax { min } => {
-                    format!("Enter max duration filter (min={}): {}", min, input_buffer)
-                }
+                InputStage::FilteringMax { min } => format!("Enter max duration filter (min={}): {}", min, input_buffer),
             };
             f.render_widget(Paragraph::new(bottom_text), chunks[2]);
         })?;
@@ -127,46 +123,26 @@ fn run_app<B: ratatui::backend::Backend>(
                 match &mut input_stage {
                     InputStage::Normal => match key.code {
                         KeyCode::Char('q') => return Ok(()),
-                        KeyCode::Char('a') => {
-                            input_stage = InputStage::AddingName;
-                            input_buffer.clear();
-                        }
+                        KeyCode::Char('a') => { input_stage = InputStage::AddingName; input_buffer.clear(); },
                         KeyCode::Char('d') => {
                             if !activities.is_empty() {
                                 activities.remove(selected);
-                                if selected >= activities.len() && selected > 0 {
-                                    selected -= 1;
-                                }
+                                if selected >= activities.len() && selected > 0 { selected -= 1; }
                                 Activity::save_all_to_file(activities, path).ok();
                             }
                         }
-                        KeyCode::Char('f') => {
-                            input_stage = InputStage::FilteringMin;
-                            input_buffer.clear();
-                        }
-                        KeyCode::Char('s') => {
+                        KeyCode::Char('f') => { input_stage = InputStage::FilteringMin; input_buffer.clear(); },
+                        KeyCode::Char('r') => { filter_min = None; filter_max = None; },
+                        KeyCode::Char('s') => { 
                             sort_mode = match sort_mode {
                                 SortMode::ByDate => SortMode::ByDuration,
                                 SortMode::ByDuration => SortMode::ByName,
                                 SortMode::ByName => SortMode::ByDate,
                             };
                         }
-                        KeyCode::Char('r') => {
-                            // ✅ Reset filters
-                            filter_min = None;
-                            filter_max = None;
-                            input_stage = InputStage::Normal;
-                        }
-                        KeyCode::Up => {
-                            if selected > 0 {
-                                selected -= 1;
-                            }
-                        }
-                        KeyCode::Down => {
-                            if selected + 1 < activities.len() {
-                                selected += 1;
-                            }
-                        }
+                        KeyCode::Char('v') => { show_stats = !show_stats; }, // <-- toggle stats
+                        KeyCode::Up => { if selected > 0 { selected -= 1; } },
+                        KeyCode::Down => { if selected + 1 < activities.len() { selected += 1; } },
                         _ => {}
                     },
                     InputStage::AddingName => match key.code {
@@ -177,16 +153,9 @@ fn run_app<B: ratatui::backend::Backend>(
                                 input_stage = InputStage::AddingDuration { name };
                             }
                         }
-                        KeyCode::Esc => {
-                            input_buffer.clear();
-                            input_stage = InputStage::Normal;
-                        }
-                        KeyCode::Backspace => {
-                            input_buffer.pop();
-                        }
-                        KeyCode::Char(c) => {
-                            input_buffer.push(c);
-                        }
+                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; },
+                        KeyCode::Backspace => { input_buffer.pop(); },
+                        KeyCode::Char(c) => { input_buffer.push(c); },
                         _ => {}
                     },
                     InputStage::AddingDuration { name } => match key.code {
@@ -205,16 +174,9 @@ fn run_app<B: ratatui::backend::Backend>(
                             input_buffer.clear();
                             input_stage = InputStage::Normal;
                         }
-                        KeyCode::Esc => {
-                            input_buffer.clear();
-                            input_stage = InputStage::Normal;
-                        }
-                        KeyCode::Backspace => {
-                            input_buffer.pop();
-                        }
-                        KeyCode::Char(c) => {
-                            input_buffer.push(c);
-                        }
+                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; },
+                        KeyCode::Backspace => { input_buffer.pop(); },
+                        KeyCode::Char(c) => { input_buffer.push(c); },
                         _ => {}
                     },
                     InputStage::FilteringMin => match key.code {
@@ -224,16 +186,9 @@ fn run_app<B: ratatui::backend::Backend>(
                             input_buffer.clear();
                             input_stage = InputStage::FilteringMax { min };
                         }
-                        KeyCode::Esc => {
-                            input_buffer.clear();
-                            input_stage = InputStage::Normal;
-                        }
-                        KeyCode::Backspace => {
-                            input_buffer.pop();
-                        }
-                        KeyCode::Char(c) => {
-                            input_buffer.push(c);
-                        }
+                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; },
+                        KeyCode::Backspace => { input_buffer.pop(); }
+                        KeyCode::Char(c) => { input_buffer.push(c); },
                         _ => {}
                     },
                     InputStage::FilteringMax { min: _ } => match key.code {
@@ -243,16 +198,9 @@ fn run_app<B: ratatui::backend::Backend>(
                             input_buffer.clear();
                             input_stage = InputStage::Normal;
                         }
-                        KeyCode::Esc => {
-                            input_buffer.clear();
-                            input_stage = InputStage::Normal;
-                        }
-                        KeyCode::Backspace => {
-                            input_buffer.pop();
-                        }
-                        KeyCode::Char(c) => {
-                            input_buffer.push(c);
-                        }
+                        KeyCode::Esc => { input_buffer.clear(); input_stage = InputStage::Normal; },
+                        KeyCode::Backspace => { input_buffer.pop(); }
+                        KeyCode::Char(c) => { input_buffer.push(c); },
                         _ => {}
                     },
                 }
