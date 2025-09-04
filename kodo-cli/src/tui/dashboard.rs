@@ -14,6 +14,7 @@ use ratatui::{
 };
 use crate::tui::{input, widgets};
 use kodo_core::Activity;
+use ratatui::prelude::{Style, Color, Modifier};
 
 pub fn run(activities: &mut Vec<Activity>, path: &Path) -> io::Result<()> {
     enable_raw_mode()?;
@@ -79,21 +80,39 @@ fn run_app<B: ratatui::backend::Backend>(
 
         terminal.draw(|f| {
             let size = f.size();
-            let chunks = Layout::default()
+            let header_chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .margin(1)
-                .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
+                .constraints([
+                    Constraint::Length(2), // Big title
+                    Constraint::Length(1), // Subheading
+                    Constraint::Length(2), // Commands
+                    Constraint::Min(0),    // Main dashboard
+                    Constraint::Length(3), // Bottom bar
+                ])
                 .split(size);
 
-            // Header
-            let header_text = format!(
-                " Kodo Dashboard - 'q' quit | 'a' add | 'd' delete | 'f' filter | 'r' reset filters | 's' sort({:?}) | 'v' toggle stats ",
-                sort_mode
-            );
-            f.render_widget(input::header_block(&header_text), chunks[0]);
+            // Big title
+            let title = Paragraph::new("Kodo")
+                .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD).add_modifier(Modifier::ITALIC))
+                .alignment(ratatui::layout::Alignment::Center);
+            f.render_widget(title, header_chunks[0]);
 
-            // Main dashboard: table + optional stats
-            widgets::draw_dashboard(f, chunks[1], &view, selected, show_stats);
+            // Subheading
+            let subheading = Paragraph::new("Track your dev activities easily")
+                .style(Style::default().fg(Color::Gray))
+                .alignment(ratatui::layout::Alignment::Center);
+            f.render_widget(subheading, header_chunks[1]);
+
+            // Commands
+            let cmds = Paragraph::new(
+                "q: quit | a: add | d: delete | f: filter | r: reset filters | s: sort | v: toggle stats"
+            )
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(ratatui::layout::Alignment::Center);
+            f.render_widget(cmds, header_chunks[2]);
+
+            // Main dashboard (table + stats)
+            widgets::draw_dashboard(f, header_chunks[3], &view, selected, show_stats);
 
             // Bottom input / stats
             let bottom_text = match &input_stage {
@@ -114,7 +133,7 @@ fn run_app<B: ratatui::backend::Backend>(
                 InputStage::FilteringMin => format!("Enter min duration filter: {}", input_buffer),
                 InputStage::FilteringMax { min } => format!("Enter max duration filter (min={}): {}", min, input_buffer),
             };
-            f.render_widget(Paragraph::new(bottom_text), chunks[2]);
+            f.render_widget(Paragraph::new(bottom_text), header_chunks[4]);
         })?;
 
         // Input handling
