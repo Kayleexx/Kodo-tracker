@@ -1,5 +1,3 @@
 [workspace]
-members = [
-  "kodo-core",
-  "kodo-cli",
-]
+members = ["kodo-cli", "kodo-core"]
+resolver = "3"

@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    widgets::{Block, Borders, BarChart},
+    style::{Color, Style, Modifier},
+    widgets::{Block, Borders, BarChart, Paragraph},
     Frame,
 };
 use kodo_core::Activity;
@@ -14,6 +14,15 @@ pub fn draw_dashboard(
     selected: usize,
     show_stats: bool,
 ) {
+    if activities.is_empty() {
+        // Show friendly empty message
+        let empty = Paragraph::new("No activities yet. Press 'a' to add one!")
+            .style(Style::default().fg(Color::Gray).add_modifier(Modifier::ITALIC))
+            .alignment(ratatui::layout::Alignment::Center);
+        f.render_widget(empty, area);
+        return;
+    }
+
     if show_stats {
         // Split area: top for table, bottom for stats
         let chunks = Layout::default()
@@ -32,7 +41,6 @@ pub fn draw_dashboard(
     }
 }
 
-// Simple stats drawer
 fn draw_stats(f: &mut Frame, area: Rect, activities: &[Activity]) {
     if activities.is_empty() {
         return;
