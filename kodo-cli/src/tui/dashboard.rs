@@ -68,7 +68,7 @@ pub fn run_app<B: Backend>(
     let mut github_activities: Vec<Activity> = Vec::new();
 
     loop {
-        // Determine current view
+
         let view: Vec<Activity> = if show_github {
             github_activities.clone()
         } else {
@@ -101,19 +101,16 @@ pub fn run_app<B: Backend>(
                 ])
                 .split(size);
 
-            // Title
             let title = Paragraph::new(if show_github { "Kodo - GitHub Commits" } else { "Kodo" })
                 .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD | Modifier::ITALIC))
                 .alignment(ratatui::layout::Alignment::Center);
             f.render_widget(title, chunks[0]);
 
-            // Subtitle
             let subtitle = Paragraph::new(if show_github { "Recent commits synced from your repo" } else { "Track your dev activities easily" })
                 .style(Style::default().fg(Color::Gray))
                 .alignment(ratatui::layout::Alignment::Center);
             f.render_widget(subtitle, chunks[1]);
 
-            // Commands
             let cmds = Paragraph::new(if show_github {
                 "q: quit | r: return to activities | v: toggle stats"
             } else {
@@ -123,10 +120,8 @@ pub fn run_app<B: Backend>(
             .alignment(ratatui::layout::Alignment::Center);
             f.render_widget(cmds, chunks[2]);
 
-            // Main dashboard
             draw_dashboard(f, chunks[3], &view, selected, show_stats);
 
-            // Footer / input stage
             let footer_text = match input_stage {
                 InputStage::Normal => {
                     let total: u32 = view.iter().map(|a| a.duration_minutes).sum();

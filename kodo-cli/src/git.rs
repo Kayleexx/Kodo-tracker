@@ -4,19 +4,16 @@ use std::path::Path;
 use chrono::{DateTime, Utc, Local};
 use kodo_core::Activity;
 
-/// Open a Git repository at a given path
 pub fn open_repo(path: &Path) -> Result<Repository> {
     Repository::open(path)
         .with_context(|| format!("Failed to open git repository at {:?}", path))
 }
 
-/// Get latest commits as Activities with estimated duration
 pub fn get_github_activities(repo_path: &Path, max: usize) -> Result<Vec<Activity>> {
     let repo = open_repo(repo_path)?;
     let mut revwalk = repo.revwalk().context("Failed to create revwalk")?;
     revwalk.push_head().context("Failed to push HEAD")?;
 
-    // Collect commits into vector with timestamp
     let mut commits = Vec::new();
     for oid_result in revwalk.take(max) {
         let oid = oid_result?;
@@ -30,10 +27,8 @@ pub fn get_github_activities(repo_path: &Path, max: usize) -> Result<Vec<Activit
         commits.push((msg, datetime));
     }
 
-    // Sort newest → oldest
     commits.sort_by(|a, b| b.1.cmp(&a.1));
 
-    // Convert to Activity with duration estimate
     let mut activities = Vec::new();
     for i in 0..commits.len() {
         let duration_minutes = if i + 1 < commits.len() {
@@ -54,7 +49,6 @@ pub fn get_github_activities(repo_path: &Path, max: usize) -> Result<Vec<Activit
     Ok(activities)
 }
 
-/// Sync latest commits to activities file
 pub fn sync_commits_to_file(repo_path: &Path, activities_path: &Path, max: usize) -> Result<()> {
     let commits = get_github_activities(repo_path, max)?;
 

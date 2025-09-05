@@ -1,20 +1,26 @@
 [
   {
+    "id": 1,
+    "name": "reading rust book",
+    "duration_minutes": 56,
+    "date": "2025-09-05"
+  },
+  {
     "id": 2,
-    "name": "sub",
-    "duration_minutes": 34,
-    "date": "2025-09-04"
+    "name": "coding",
+    "duration_minutes": 56,
+    "date": "2025-09-05"
   },
   {
     "id": 3,
-    "name": "sub",
-    "duration_minutes": 34,
-    "date": "2025-09-04"
+    "name": "lunch",
+    "duration_minutes": 25,
+    "date": "2025-09-05"
   },
   {
     "id": 4,
-    "name": "div",
+    "name": "break",
     "duration_minutes": 12,
-    "date": "2025-09-04"
+    "date": "2025-09-05"
   }
 ]

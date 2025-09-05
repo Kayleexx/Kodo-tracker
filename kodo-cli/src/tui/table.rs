@@ -9,7 +9,6 @@ use kodo_core::Activity;
 pub struct ActivityTable;
 
 impl ActivityTable {
-    // Frame is generic over the backend B
     pub fn draw(f: &mut Frame, area: Rect, activities: &[Activity], selected: usize) {
         let rows: Vec<Row> = activities
             .iter()

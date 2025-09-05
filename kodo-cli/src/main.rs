@@ -8,7 +8,6 @@ mod tui;
 mod cli_actions;
 use crate::cli_actions::*;
 
-/// CLI definition
 #[derive(Parser, Debug)]
 #[command(name = "kodo", about = "A dev activity tracker CLI")]
 struct Cli {
@@ -19,7 +18,6 @@ struct Cli {
     file: Option<String>,
 }
 
-/// CLI commands
 #[derive(Subcommand, Debug)]
 enum Commands {
     Add { name: String, minutes: u32 },
@@ -51,7 +49,6 @@ fn main() -> Result<()> {
     let file_string = cli.file.clone().unwrap_or_else(|| "activities.json".to_string());
     let path = Path::new(&file_string);
 
-    // Load or initialize activities.json
     let mut activities = if path.exists() {
         let acts = Activity::load_from_file(path)
             .with_context(|| format!("Failed to load activities from {:?}", path))?;
@@ -67,7 +64,6 @@ fn main() -> Result<()> {
         acts
     };
 
-    // Match CLI commands
     match cli.command {
         Commands::Add { name, minutes } => {
             add_activity(&mut activities, &name, minutes, path)?
