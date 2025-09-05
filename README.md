@@ -1,7 +1,7 @@
-# Kodo — Track Your Development Activities
+# Kodo: Track Your Development Activities
 
 Kodo is a **developer activity tracker** with a clean terminal UI, built in Rust using [ratatui](https://github.com/ratatui-org/ratatui).  
-It helps you log activities, track time, and even sync your **Git commits** into the dashboard — so you get real stats about your coding sessions without extra effort.
+It helps you log activities, track time, and even sync your **Git commits** into the dashboard, so you get real stats about your coding sessions without extra effort.
 
 ---
 
@@ -83,22 +83,6 @@ Each activity has:
 * [anyhow](https://crates.io/crates/anyhow) — Error handling
 * [serde](https://crates.io/crates/serde) + [serde\_json](https://crates.io/crates/serde_json) — Persistence
 
----
-
-## 📦 Roadmap / Ideas
-
-* [ ] Task/project grouping
-* [ ] Daily/weekly activity summaries
-* [ ] Git commit streak heatmap (like GitHub)
-* [ ] Export reports to Markdown/CSV
-* [ ] Config file support
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-Feel free to open issues or submit PRs.
 
 ---
 
@@ -107,4 +91,8 @@ Feel free to open issues or submit PRs.
 MIT License © 2025 [Your Name](https://github.com/Kayleexx)
 
 ---
+
+https://github.com/user-attachments/assets/7c99b9ba-513a-435a-bf56-2436b649157b
+
+
 
