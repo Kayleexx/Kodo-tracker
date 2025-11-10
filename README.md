@@ -88,7 +88,7 @@ Each activity has:
 
 ## 📜 License
 
-MIT License © 2025 [Your Name](https://github.com/Kayleexx)
+MIT License © 2025 [Mitali](https://github.com/Kayleexx)
 
 ---
 
